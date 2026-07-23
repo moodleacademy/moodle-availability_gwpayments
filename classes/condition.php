@@ -222,7 +222,7 @@ class condition extends \core_availability\condition {
      * @param bool $info       Information about the availability condition and module context
      */
     protected function get_either_description($not, $standalone, $info) {
-        global $OUTPUT, $PAGE;
+        global $OUTPUT;
         $config = get_config('availability_gwpayments');
         $disablepaymentonmisconfig = (bool)$config->disablepaymentonmisconfig;
         $disablepaymentonapp = (bool)$config->disableifmoodleapp;
@@ -276,12 +276,13 @@ class condition extends \core_availability\condition {
 
         $data->hasnotifications = !empty($data->notifications);
 
-        // Using $OUTPUT can produce "The theme has already been set up for this page ready for output" error.
-        // So only render the payment button when its really needed (ie, within the course).
-        // For notifications, just return the text string.
-        $paymentregion = '';
-        if ($PAGE->state !== $PAGE::STATE_BEFORE_HEADER) {
+        // Using $OUTPUT can produce "The theme has already been set up for this page ready for output" error
+        // when $PAGE/$OUTPUT is touched before the page has been fully configured (eg during dynamic cm data
+        // building, CLI/cron/webservice requests).
+        try {
             $paymentregion = $OUTPUT->render_from_template('availability_gwpayments/payment_region', $data);
+        } catch (\coding_exception $e) {
+            $paymentregion = '';
         }
 
         if ($not) {
