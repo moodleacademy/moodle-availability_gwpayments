@@ -22,10 +22,11 @@
  *
  * @package     availability_gwpayments
  *
- * @copyright   Ing. R.J. van Dongen
- * @author      R.J. van Dongen <rogier@sebsoft.nl>
+ * @copyright   RvD
+ * @author      RvD <helpdesk@sebsoft.nl>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+// @codingStandardsIgnoreFile Due to Moodle failing the "class implements" alphabetically itself.
 
 namespace availability_gwpayments\privacy;
 
@@ -41,8 +42,8 @@ use core_payment\helper as payment_helper;
  *
  * @package     availability_gwpayments
  *
- * @copyright   Ing. R.J. van Dongen
- * @author      R.J. van Dongen <rogier@sebsoft.nl>
+ * @copyright   RvD
+ * @author      RvD <helpdesk@sebsoft.nl>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class provider implements
@@ -146,7 +147,7 @@ class provider implements
                 continue;
             }
             $coursesections = $DB->get_records('course_sections', ['course' => $context->instanceid]);
-            $coursesections = array_filter($coursesections, function($section) {
+            $coursesections = array_filter($coursesections, function ($section) {
                 if (empty($section->availability)) {
                     return false;
                 }
@@ -311,5 +312,4 @@ class provider implements
             \core_payment\privacy\provider::delete_data_for_payment_sql($sql, $params);
         }
     }
-
 }

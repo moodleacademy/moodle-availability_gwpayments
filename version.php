@@ -18,14 +18,15 @@
  * Plugin version and other meta-data are defined here.
  *
  * @package     availability_gwpayments
- * @copyright   2017 R.J. van Dongen <rogier@sebsoft.nl>
+ * @copyright   2017 RvD <helpdesk@sebsoft.nl>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'availability_gwpayments';
-$plugin->release = '1.0.2';
-$plugin->version = 2021081602;
-$plugin->requires = 2020110900; // Moodle 3.10+.
+$plugin->release = '1.0.5 (build 2025120100)';
+$plugin->version = 2025090100;
+$plugin->requires = 2023042400; // Moodle 4.2+.
 $plugin->maturity = MATURITY_STABLE;
+$plugin->supported = [402, 502];

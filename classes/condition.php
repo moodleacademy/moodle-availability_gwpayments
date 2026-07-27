@@ -22,8 +22,8 @@
  *
  * @package     availability_gwpayments
  *
- * @copyright   2021 Ing. R.J. van Dongen
- * @author      Ing. R.J. van Dongen <rogier@sebsoft.nl>
+ * @copyright   2021 RvD
+ * @author      RvD <helpdesk@sebsoft.nl>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -31,22 +31,31 @@ namespace availability_gwpayments;
 
 use availability_gwpayments\payment\service_provider;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * availability_gwpayments condition.
  *
  * @package     availability_gwpayments
  *
- * @copyright   2021 Ing. R.J. van Dongen
- * @author      Ing. R.J. van Dongen <rogier@sebsoft.nl>
+ * @copyright   2021 RvD
+ * @author      RvD <helpdesk@sebsoft.nl>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class condition extends \core_availability\condition {
-
+    /**
+     * @var int
+     */
     private $accountid;
+    /**
+     * @var string
+     */
     private $currency;
+    /**
+     * @var float
+     */
     private $cost;
+    /**
+     * @var float
+     */
     private $vat;
 
     /**
@@ -75,7 +84,7 @@ class condition extends \core_availability\condition {
      * @return \stdClass
      */
     public function save() {
-        $result = (object) array('type' => 'gwpayments');
+        $result = (object) ['type' => 'gwpayments'];
         if ($this->accountid) {
             $result->accountid = $this->accountid;
         }
@@ -104,13 +113,13 @@ class condition extends \core_availability\condition {
      * @return stdClass Object representing condition
      */
     public static function get_json($accountid, $currency, $cost, $vat) {
-        return (object) array(
+        return (object) [
             'type' => 'gwpayments',
             'accountid' => $accountid,
             'currency' => $currency,
             'cost' => $cost,
-            'vat' => $vat
-        );
+            'vat' => $vat,
+        ];
     }
 
     /**
@@ -180,6 +189,31 @@ class condition extends \core_availability\condition {
     }
 
     /**
+     * Make payment description.
+     * This is used in a HTML data attribute and will remove ALL single/double quotes.
+     *
+     * @param string $forstring
+     * @param \core\context $context
+     * @return string
+     */
+    protected function get_payment_description($forstring, $context) {
+        $prefix = get_config('availabiliuty_gwpayments', 'purchasedescprepend');
+        if (empty($prefix)) {
+            $desc = $forstring;
+        } else {
+            $desc = format_text($forstring, FORMAT_MOODLE, [
+                'context' => $context,
+                'para' => false,
+                'overflowdiv' => false,
+            ]);
+        }
+        // Replace single AND double quotes.
+        $desc = str_replace('"', '', $desc);
+        $desc = str_replace("'", '', $desc);
+        return $desc;
+    }
+
+    /**
      * Shows the description using the different lang strings for the standalone
      * version or the full one.
      *
@@ -188,9 +222,10 @@ class condition extends \core_availability\condition {
      * @param bool $info       Information about the availability condition and module context
      */
     protected function get_either_description($not, $standalone, $info) {
-        global $OUTPUT, $PAGE;
+        global $OUTPUT;
         $config = get_config('availability_gwpayments');
         $disablepaymentonmisconfig = (bool)$config->disablepaymentonmisconfig;
+        $disablepaymentonapp = (bool)$config->disableifmoodleapp;
 
         $context = $info->get_context();
         if ($context->contextlevel === CONTEXT_MODULE) {
@@ -214,7 +249,7 @@ class condition extends \core_availability\condition {
             'component' => 'availability_gwpayments',
             'paymentarea' => $paymentarea,
             'instanceid' => $instanceid,
-            'description' => get_string('purchasedescription', 'availability_gwpayments', $description),
+            'description' => $this->get_payment_description($description, $context),
             'successurl' => service_provider::get_success_url($paymentarea, $instanceid)->out(false),
         ];
         $data->localisedcost = $data->cost;
@@ -222,9 +257,10 @@ class condition extends \core_availability\condition {
         if (!$canpaymentbemade && $disablepaymentonmisconfig) {
             $data->disablepaymentbutton = true;
         }
+
         $data->hasnotifications = false;
+        $data->notifications = [];
         if (!$canpaymentbemade) {
-            $data->hasnotifications = true;
             if (is_siteadmin() || has_capability('moodle/course:update', $context)) {
                 $data->notifications = $notifications;
             } else {
@@ -232,12 +268,21 @@ class condition extends \core_availability\condition {
             }
         }
 
-        // Using $OUTPUT can produce "The theme has already been set up for this page ready for output" error.
-        // So only render the payment button when its really needed (ie, within the course).
-        // For notifications, just return the text string.
-        $paymentregion = '';
-        if ($PAGE->state !== $PAGE::STATE_BEFORE_HEADER) {
+        // See https://github.com/sebsoftnl/moodle-availability_gwpayments/issues/6.
+        if (\core_useragent::is_moodle_app() && $disablepaymentonapp) {
+            $data->disablepaymentbutton = true;
+            $data->notifications[] = get_string('warn:disabledifmoodleapp', 'availability_gwpayments');
+        }
+
+        $data->hasnotifications = !empty($data->notifications);
+
+        // Using $OUTPUT can produce "The theme has already been set up for this page ready for output" error
+        // when $PAGE/$OUTPUT is touched before the page has been fully configured (eg during dynamic cm data
+        // building, CLI/cron/webservice requests).
+        try {
             $paymentregion = $OUTPUT->render_from_template('availability_gwpayments/payment_region', $data);
+        } catch (\coding_exception $e) {
+            $paymentregion = '';
         }
 
         if ($not) {
@@ -290,5 +335,4 @@ class condition extends \core_availability\condition {
         }
         return true;
     }
-
 }
